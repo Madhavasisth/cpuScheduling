@@ -1,0 +1,784 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>OS Scheduler & Deadlock Game</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+
+        .header {
+            background: rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(10px);
+            border-radius: 15px;
+            padding: 20px;
+            margin-bottom: 20px;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+        }
+
+        .header h1 {
+            color: white;
+            font-size: 28px;
+        }
+
+        .stats {
+            display: flex;
+            gap: 30px;
+            color: white;
+            font-size: 18px;
+        }
+
+        .score {
+            color: #ffd700;
+            font-weight: bold;
+        }
+
+        .level {
+            color: #7bed9f;
+            font-weight: bold;
+        }
+
+        .card {
+            background: rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(10px);
+            border-radius: 15px;
+            padding: 30px;
+            margin-bottom: 20px;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+        }
+
+        .card h2 {
+            color: white;
+            margin-bottom: 20px;
+            font-size: 24px;
+        }
+
+        .menu-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 20px;
+        }
+
+        .menu-btn {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 40px;
+            border: none;
+            border-radius: 15px;
+            cursor: pointer;
+            font-size: 18px;
+            transition: transform 0.3s, box-shadow 0.3s;
+        }
+
+        .menu-btn:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
+        }
+
+        .menu-btn.scheduling {
+            background: linear-gradient(135deg, #3498db 0%, #2980b9 100%);
+        }
+
+        .menu-btn.deadlock {
+            background: linear-gradient(135deg, #e74c3c 0%, #c0392b 100%);
+        }
+
+        .menu-btn .icon {
+            font-size: 48px;
+            margin-bottom: 15px;
+        }
+
+        .menu-btn h3 {
+            margin-bottom: 10px;
+        }
+
+        .process-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 15px;
+        }
+
+        .process-card {
+            background: rgba(255, 255, 255, 0.2);
+            padding: 15px;
+            border-radius: 10px;
+            border-left: 4px solid;
+        }
+
+        .process-card .process-id {
+            color: white;
+            font-weight: bold;
+            font-size: 20px;
+            margin-bottom: 8px;
+        }
+
+        .process-card .process-info {
+            color: rgba(255, 255, 255, 0.8);
+            font-size: 14px;
+        }
+
+        .algorithm-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+            gap: 15px;
+        }
+
+        .algo-btn {
+            background: rgba(255, 255, 255, 0.2);
+            color: white;
+            padding: 20px;
+            border: none;
+            border-radius: 10px;
+            cursor: pointer;
+            font-size: 16px;
+            font-weight: bold;
+            transition: all 0.3s;
+        }
+
+        .algo-btn:hover:not(:disabled) {
+            background: rgba(255, 255, 255, 0.3);
+            transform: scale(1.05);
+        }
+
+        .algo-btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+
+        .algo-btn.selected {
+            background: #2ecc71;
+        }
+
+        .gantt-chart {
+            display: flex;
+            gap: 2px;
+            height: 150px;
+            align-items: flex-end;
+            margin-top: 20px;
+        }
+
+        .gantt-slot {
+            flex: 1;
+            border-radius: 8px 8px 0 0;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+            padding: 10px;
+            color: white;
+            font-weight: bold;
+            text-align: center;
+        }
+
+        .resource-section {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 30px;
+        }
+
+        .resource-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 10px;
+        }
+
+        .resource-btn {
+            padding: 20px;
+            border: none;
+            border-radius: 10px;
+            font-weight: bold;
+            font-size: 16px;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+
+        .resource-btn.available {
+            background: #2ecc71;
+            color: white;
+        }
+
+        .resource-btn.available:hover {
+            background: #27ae60;
+        }
+
+        .resource-btn.allocated {
+            background: #e74c3c;
+            color: white;
+            cursor: not-allowed;
+            opacity: 0.7;
+        }
+
+        .feedback {
+            background: rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(10px);
+            border-radius: 15px;
+            padding: 20px;
+            margin: 20px 0;
+            text-align: center;
+            color: white;
+            font-size: 18px;
+        }
+
+        .feedback.success {
+            border: 2px solid #2ecc71;
+        }
+
+        .feedback.warning {
+            border: 2px solid #f39c12;
+        }
+
+        .feedback.error {
+            border: 2px solid #e74c3c;
+        }
+
+        .back-btn {
+            background: rgba(255, 255, 255, 0.2);
+            color: white;
+            padding: 15px 30px;
+            border: none;
+            border-radius: 10px;
+            cursor: pointer;
+            font-size: 16px;
+            font-weight: bold;
+            width: 100%;
+            margin-top: 20px;
+            transition: all 0.3s;
+        }
+
+        .back-btn:hover {
+            background: rgba(255, 255, 255, 0.3);
+        }
+
+        .info-box {
+            background: rgba(59, 130, 246, 0.2);
+            border: 1px solid rgba(59, 130, 246, 0.4);
+            border-radius: 10px;
+            padding: 20px;
+            margin-top: 20px;
+            color: white;
+        }
+
+        .info-box h4 {
+            margin-bottom: 10px;
+        }
+
+        .info-box ul {
+            margin-left: 20px;
+        }
+
+        .info-box li {
+            margin: 5px 0;
+        }
+
+        .hidden {
+            display: none;
+        }
+
+        .deadlock-alert {
+            background: rgba(231, 76, 60, 0.2);
+            border: 2px solid #e74c3c;
+            border-radius: 15px;
+            padding: 30px;
+            text-align: center;
+            color: white;
+        }
+
+        .deadlock-alert h3 {
+            font-size: 28px;
+            margin-bottom: 15px;
+            color: #e74c3c;
+        }
+
+        .fix-btn {
+            background: #2ecc71;
+            color: white;
+            padding: 15px 40px;
+            border: none;
+            border-radius: 10px;
+            cursor: pointer;
+            font-size: 18px;
+            font-weight: bold;
+            margin-top: 20px;
+            transition: all 0.3s;
+        }
+
+        .fix-btn:hover {
+            background: #27ae60;
+            transform: scale(1.05);
+        }
+
+        @media (max-width: 768px) {
+            .header {
+                flex-direction: column;
+                gap: 15px;
+            }
+
+            .resource-section {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <!-- Header -->
+        <div class="header">
+            <h1>🎮 OS Scheduler & Deadlock Game</h1>
+            <div class="stats">
+                <div>⭐ Score: <span class="score" id="scoreDisplay">0</span></div>
+                <div>📊 Level: <span class="level" id="levelDisplay">1</span></div>
+            </div>
+        </div>
+
+        <!-- Menu Screen -->
+        <div id="menuScreen">
+            <div class="card">
+                <h2>Choose Your Challenge</h2>
+                <div class="menu-grid">
+                    <button class="menu-btn scheduling" onclick="startScheduling()">
+                        <div class="icon">⚡</div>
+                        <h3>CPU Scheduling</h3>
+                        <p>Choose the best algorithm to schedule processes efficiently!</p>
+                    </button>
+                    <button class="menu-btn deadlock" onclick="startDeadlock()">
+                        <div class="icon">⚠️</div>
+                        <h3>Deadlock Challenge</h3>
+                        <p>Allocate resources without creating a deadlock situation!</p>
+                    </button>
+                </div>
+                <div class="info-box">
+                    <h4>ℹ️ How to Play:</h4>
+                    <ul>
+                        <li>Scheduling: Choose the algorithm that minimizes wait time</li>
+                        <li>Deadlock: Allocate resources carefully to avoid circular wait</li>
+                        <li>Higher levels = more processes = harder challenges!</li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+
+        <!-- Scheduling Game Screen -->
+        <div id="schedulingScreen" class="hidden">
+            <div class="card">
+                <h2>Process Queue</h2>
+                <div class="process-grid" id="processGrid"></div>
+            </div>
+
+            <div class="card">
+                <h2>Choose Scheduling Algorithm</h2>
+                <div class="algorithm-grid">
+                    <button class="algo-btn" onclick="selectAlgorithm('FCFS')">FCFS</button>
+                    <button class="algo-btn" onclick="selectAlgorithm('SJF')">SJF</button>
+                    <button class="algo-btn" onclick="selectAlgorithm('Priority')">Priority</button>
+                    <button class="algo-btn" onclick="selectAlgorithm('Round Robin')">Round Robin</button>
+                </div>
+            </div>
+
+            <div id="ganttContainer" class="card hidden">
+                <h2>Gantt Chart</h2>
+                <div class="gantt-chart" id="ganttChart"></div>
+            </div>
+
+            <div id="schedulingFeedback"></div>
+
+            <button class="back-btn" onclick="backToMenu()">↩️ Back to Menu</button>
+        </div>
+
+        <!-- Deadlock Game Screen -->
+        <div id="deadlockScreen" class="hidden">
+            <div class="card">
+                <h2>Resource Allocation Challenge</h2>
+                <p style="color: rgba(255,255,255,0.8); margin-bottom: 20px;">
+                    Click a process, then click a resource to allocate. Avoid circular wait!
+                </p>
+                <div class="resource-section">
+                    <div>
+                        <h3 style="color: white; margin-bottom: 15px;">Processes</h3>
+                        <div id="processListDeadlock"></div>
+                    </div>
+                    <div>
+                        <h3 style="color: white; margin-bottom: 15px;">Resources</h3>
+                        <div class="resource-grid" id="resourceGrid"></div>
+                    </div>
+                </div>
+            </div>
+
+            <div id="deadlockAlert" class="hidden"></div>
+            <div id="deadlockFeedback"></div>
+
+            <button class="back-btn" onclick="backToMenu()">↩️ Back to Menu</button>
+        </div>
+    </div>
+
+    <script>
+        // Game State
+        let score = 0;
+        let level = 1;
+        let processes = [];
+        let selectedAlgorithm = '';
+        let deadlockProcesses = [];
+        let resources = ['R1', 'R2', 'R3', 'R4'];
+        let selectedProcess = null;
+
+        // Initialize
+        updateDisplay();
+
+        function updateDisplay() {
+            document.getElementById('scoreDisplay').textContent = score;
+            document.getElementById('levelDisplay').textContent = level;
+        }
+
+        function showScreen(screen) {
+            document.getElementById('menuScreen').classList.add('hidden');
+            document.getElementById('schedulingScreen').classList.add('hidden');
+            document.getElementById('deadlockScreen').classList.add('hidden');
+            document.getElementById(screen).classList.remove('hidden');
+        }
+
+        function backToMenu() {
+            showScreen('menuScreen');
+            selectedAlgorithm = '';
+        }
+
+        // Generate Processes
+        function generateProcesses(levelNum) {
+            const count = Math.min(3 + levelNum, 6);
+            const colors = ['#e74c3c', '#3498db', '#2ecc71', '#f39c12', '#9b59b6', '#1abc9c'];
+            return Array.from({ length: count }, (_, i) => ({
+                id: `P${i + 1}`,
+                arrivalTime: Math.floor(Math.random() * 5),
+                burstTime: Math.floor(Math.random() * 8) + 2,
+                priority: Math.floor(Math.random() * 5) + 1,
+                color: colors[i]
+            }));
+        }
+
+        // Start Scheduling Game
+        function startScheduling() {
+            processes = generateProcesses(level);
+            selectedAlgorithm = '';
+            showScreen('schedulingScreen');
+            displayProcesses();
+            document.getElementById('ganttContainer').classList.add('hidden');
+            document.getElementById('schedulingFeedback').innerHTML = '';
+            
+            // Reset algorithm buttons
+            document.querySelectorAll('.algo-btn').forEach(btn => {
+                btn.classList.remove('selected');
+                btn.disabled = false;
+            });
+        }
+
+        function displayProcesses() {
+            const grid = document.getElementById('processGrid');
+            grid.innerHTML = '';
+            processes.forEach(p => {
+                const card = document.createElement('div');
+                card.className = 'process-card';
+                card.style.borderLeftColor = p.color;
+                card.innerHTML = `
+                    <div class="process-id">${p.id}</div>
+                    <div class="process-info">Arrival: ${p.arrivalTime}ms</div>
+                    <div class="process-info">Burst: ${p.burstTime}ms</div>
+                    <div class="process-info">Priority: ${p.priority}</div>
+                `;
+                grid.appendChild(card);
+            });
+        }
+
+        // Scheduling Algorithms
+        function calculateSchedule(algo) {
+            let sortedProcs = [...processes];
+            let currentTime = 0;
+            let gantt = [];
+            let completed = [];
+
+            switch(algo) {
+                case 'FCFS':
+                    sortedProcs.sort((a, b) => a.arrivalTime - b.arrivalTime);
+                    sortedProcs.forEach(p => {
+                        if (currentTime < p.arrivalTime) currentTime = p.arrivalTime;
+                        gantt.push({ process: p.id, start: currentTime, end: currentTime + p.burstTime, color: p.color });
+                        currentTime += p.burstTime;
+                    });
+                    break;
+
+                case 'SJF':
+                    while (completed.length < processes.length) {
+                        let available = sortedProcs.filter(p => 
+                            p.arrivalTime <= currentTime && !completed.includes(p.id)
+                        );
+                        if (available.length === 0) {
+                            currentTime++;
+                            continue;
+                        }
+                        available.sort((a, b) => a.burstTime - b.burstTime);
+                        let next = available[0];
+                        gantt.push({ process: next.id, start: currentTime, end: currentTime + next.burstTime, color: next.color });
+                        currentTime += next.burstTime;
+                        completed.push(next.id);
+                    }
+                    break;
+
+                case 'Priority':
+                    while (completed.length < processes.length) {
+                        let available = sortedProcs.filter(p => 
+                            p.arrivalTime <= currentTime && !completed.includes(p.id)
+                        );
+                        if (available.length === 0) {
+                            currentTime++;
+                            continue;
+                        }
+                        available.sort((a, b) => a.priority - b.priority);
+                        let next = available[0];
+                        gantt.push({ process: next.id, start: currentTime, end: currentTime + next.burstTime, color: next.color });
+                        currentTime += next.burstTime;
+                        completed.push(next.id);
+                    }
+                    break;
+
+                case 'Round Robin':
+                    let queue = [...sortedProcs].sort((a, b) => a.arrivalTime - b.arrivalTime);
+                    let remaining = queue.map(p => ({ ...p, remaining: p.burstTime }));
+                    let timeQuantum = 2;
+                    while (remaining.some(p => p.remaining > 0)) {
+                        for (let p of remaining) {
+                            if (p.remaining > 0 && p.arrivalTime <= currentTime) {
+                                let execTime = Math.min(timeQuantum, p.remaining);
+                                gantt.push({ process: p.id, start: currentTime, end: currentTime + execTime, color: p.color });
+                                currentTime += execTime;
+                                p.remaining -= execTime;
+                            }
+                        }
+                        if (remaining.every(p => p.remaining === 0)) break;
+                        currentTime++;
+                    }
+                    break;
+            }
+            return gantt;
+        }
+
+        function selectAlgorithm(algo) {
+            if (selectedAlgorithm) return;
+            
+            selectedAlgorithm = algo;
+            const gantt = calculateSchedule(algo);
+            displayGanttChart(gantt);
+            
+            // Mark button as selected
+            document.querySelectorAll('.algo-btn').forEach(btn => {
+                if (btn.textContent === algo) {
+                    btn.classList.add('selected');
+                }
+                btn.disabled = true;
+            });
+            
+            // Calculate average wait time
+            const avgWaitTime = processes.reduce((sum, p) => {
+                const completion = gantt.filter(c => c.process === p.id);
+                const waitTime = completion[0].start - p.arrivalTime;
+                return sum + waitTime;
+            }, 0) / processes.length;
+            
+            // Provide feedback
+            const feedbackDiv = document.getElementById('schedulingFeedback');
+            if (avgWaitTime < 5) {
+                feedbackDiv.innerHTML = `
+                    <div class="feedback success">
+                        ✅ Excellent choice! ${algo} gives optimal results for this set. +${10 * level} points!
+                    </div>
+                `;
+                score += 10 * level;
+                updateDisplay();
+                setTimeout(() => {
+                    level++;
+                    updateDisplay();
+                    startScheduling();
+                }, 3000);
+            } else {
+                feedbackDiv.innerHTML = `
+                    <div class="feedback warning">
+                        ⚠️ ${algo} works, but try finding a better algorithm for lower wait time! -5 points
+                    </div>
+                `;
+                score = Math.max(0, score - 5);
+                updateDisplay();
+            }
+        }
+
+        function displayGanttChart(gantt) {
+            const container = document.getElementById('ganttContainer');
+            const chart = document.getElementById('ganttChart');
+            container.classList.remove('hidden');
+            chart.innerHTML = '';
+            
+            const maxTime = Math.max(...gantt.map(s => s.end));
+            
+            gantt.forEach(slot => {
+                const div = document.createElement('div');
+                div.className = 'gantt-slot';
+                div.style.backgroundColor = slot.color;
+                div.style.height = `${((slot.end - slot.start) / maxTime) * 100}%`;
+                div.innerHTML = `
+                    <div>${slot.process}</div>
+                    <div style="font-size: 12px;">${slot.start}-${slot.end}</div>
+                `;
+                chart.appendChild(div);
+            });
+        }
+
+        // Start Deadlock Game
+        function startDeadlock() {
+            deadlockProcesses = [
+                { id: 'P1', holding: null, waiting: null, color: '#e74c3c' },
+                { id: 'P2', holding: null, waiting: null, color: '#3498db' },
+                { id: 'P3', holding: null, waiting: null, color: '#2ecc71' },
+                { id: 'P4', holding: null, waiting: null, color: '#f39c12' }
+            ];
+            selectedProcess = null;
+            showScreen('deadlockScreen');
+            displayDeadlockState();
+            document.getElementById('deadlockAlert').classList.add('hidden');
+            document.getElementById('deadlockFeedback').innerHTML = '';
+        }
+
+        function displayDeadlockState() {
+            const processList = document.getElementById('processListDeadlock');
+            const resourceGrid = document.getElementById('resourceGrid');
+            
+            processList.innerHTML = '';
+            deadlockProcesses.forEach(p => {
+                const card = document.createElement('div');
+                card.className = 'process-card';
+                card.style.borderLeftColor = p.color;
+                card.innerHTML = `
+                    <div class="process-id">${p.id}</div>
+                    <div class="process-info">Holding: ${p.holding || 'None'}</div>
+                    <div class="process-info">Waiting: ${p.waiting || 'None'}</div>
+                `;
+                processList.appendChild(card);
+            });
+            
+            resourceGrid.innerHTML = '';
+            resources.forEach(r => {
+                const allocated = deadlockProcesses.find(p => p.holding === r);
+                const btn = document.createElement('button');
+                btn.className = allocated ? 'resource-btn allocated' : 'resource-btn available';
+                btn.textContent = r;
+                btn.disabled = !!allocated;
+                if (allocated) {
+                    btn.innerHTML = `${r}<br><small>by ${allocated.id}</small>`;
+                } else {
+                    btn.onclick = () => allocateResource(r);
+                }
+                resourceGrid.appendChild(btn);
+            });
+        }
+
+        function allocateResource(resource) {
+            // Simple allocation to first available process
+            const proc = deadlockProcesses.find(p => !p.holding);
+            if (proc) {
+                proc.holding = resource;
+                displayDeadlockState();
+                
+                // Simulate waiting after some allocations
+                if (deadlockProcesses.filter(p => p.holding).length >= 3) {
+                    // Create circular wait for demo
+                    deadlockProcesses[0].waiting = deadlockProcesses[1].holding;
+                    deadlockProcesses[1].waiting = deadlockProcesses[2].holding;
+                    deadlockProcesses[2].waiting = deadlockProcesses[3].holding;
+                    if (deadlockProcesses[3].holding) {
+                        deadlockProcesses[3].waiting = deadlockProcesses[0].holding;
+                    }
+                    
+                    if (checkDeadlock()) {
+                        showDeadlockAlert();
+                    }
+                }
+                displayDeadlockState();
+            }
+        }
+
+        function checkDeadlock() {
+            for (let p of deadlockProcesses) {
+                if (!p.waiting) return false;
+            }
+            
+            // Check for circular wait
+            let visited = new Set();
+            let current = deadlockProcesses[0].id;
+            
+            while (current && !visited.has(current)) {
+                visited.add(current);
+                const proc = deadlockProcesses.find(p => p.id === current);
+                const wantedResource = proc.waiting;
+                const holder = deadlockProcesses.find(p => p.holding === wantedResource);
+                if (!holder) break;
+                current = holder.id;
+                if (current === deadlockProcesses[0].id) return true;
+            }
+            return false;
+        }
+
+        function showDeadlockAlert() {
+            const alert = document.getElementById('deadlockAlert');
+            alert.classList.remove('hidden');
+            alert.innerHTML = `
+                <div class="deadlock-alert">
+                    <h3>⚠️ DEADLOCK DETECTED!</h3>
+                    <p>All processes are waiting in a circular chain.</p>
+                    <p>Apply deadlock prevention to recover!</p>
+                    <button class="fix-btn" onclick="fixDeadlock()">✅ Apply Deadlock Prevention</button>
+                </div>
+            `;
+            score = Math.max(0, score - 20);
+            updateDisplay();
+            
+            const feedbackDiv = document.getElementById('deadlockFeedback');
+            feedbackDiv.innerHTML = `
+                <div class="feedback error">
+                    ❌ Deadlock occurred! -20 points. Fix it to recover!
+                </div>
+            `;
+        }
+
+        function fixDeadlock() {
+            deadlockProcesses.forEach(p => {
+                p.holding = null;
+                p.waiting = null;
+            });
+            displayDeadlockState();
+            document.getElementById('deadlockAlert').classList.add('hidden');
+            
+            const feedbackDiv = document.getElementById('deadlockFeedback');
+            feedbackDiv.innerHTML = `
+                <div class="feedback success">
+                    ✅ Deadlock avoided! Resources released. +30 points!
+                </div>
+            `;
+            score += 30;
+            updateDisplay();
+        }
+    </script>
+</body>
+</html>
